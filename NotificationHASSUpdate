@@ -1,0 +1,78 @@
+blueprint:
+  name: Home Assistant 更新提醒
+  description: 当Home Assistant有更新时发送通知
+  domain: automation
+  input:
+    updater:
+      name: 更新传感器
+      description: 用于检测更新状态的传感器（一般系统会默认创建，实体id为：binary_sensor.updater）
+      selector:
+        entity:
+          domain: binary_sensor
+    notification_title:
+      name: 通知标题 (可选)
+      description: '默认: "Home Assistant 有更新可用!"'
+      default: "有更新可用!"
+    notification_message:
+      name: 通知内容 (可选)
+      description: '默认: "Home Assistant {{ newest_version }} 可以更新"'
+      default: "Home Assistant {{ newest_version }} 可以更新"
+    delay:
+      name: 延迟 (可选)
+      description: 延迟发送通知
+      default:
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: seconds
+          mode: slider
+    notify_device:
+      name: 接收通知的设备
+      description: 设备需要安装有HASS官方APP
+      selector:
+        device:
+          integration: mobile_app
+    include_release_notes:
+      name: 通知中包含更新详情
+      description: 开启后会在通知中包含更新的说明，默认开启
+      selector:
+        boolean:
+      default: true
+    is_ios:
+      name: 是苹果设备?
+      description: 开启时表示接收通知的设备是苹果设备，默认开启
+      selector:
+        boolean:
+      default: true
+
+trigger:
+  platform: state
+  entity_id: !input updater
+  from: "off"
+  to: "on"
+
+variables:
+  updater: !input updater
+  newest_version: "{{ states[updater].attributes.newest_version }}"
+  release_notes: "{{ states[updater].attributes.release_notes }}"
+  is_ios: !input is_ios
+  notify_device: !input notify_device
+  include_release_notes: !input include_release_notes
+  notification_title: !input notification_title
+  notification_message: !input notification_message
+  delay: !input delay
+
+action:
+  - delay: "{{ delay }}"
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "{{ notification_title }}"
+    message: "{{ notification_message }}"
+    data: >
+      {% if include_release_notes %}
+        {% set android_data = { "clickAction": "%s" } | format(release_notes) %}
+        {% set ios_data = { "url": "%s" } | format(release_notes) %}
+        {{ ios_data if is_ios else android_data }}
+      {% endif %}

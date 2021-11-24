@@ -1,0 +1,65 @@
+blueprint:
+  name: Presence Automations
+  description: >
+     Disable automation(s) when someone arrives. Re-enable them when they leave.
+  domain: automation
+  input:
+    person:
+      name: Person
+      description: Select the person to be home.
+      selector:
+        entity:
+          domain: person
+    automation: 
+      name: Automation
+      description: Select the automation(s) that need to be turned off.
+      selector:
+        target:
+          entity:
+            domain: automation
+    inverted:
+      name: Invert Blueprint
+      description: 'This will cause the selected automations to enable when the person comes home, instead of disabling them as per default. 
+      This will in turn disable the automation when the person leaves.'
+      default: false
+      selector:
+        boolean: {}            
+trigger:
+  - platform: state
+    entity_id: !input 'person'
+condition: []
+variables:
+  inverted: !input 'inverted'
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input 'person'
+            state: home
+        sequence:
+        - choose:
+          - conditions: '{{ inverted }}'
+            sequence:
+              - service: automation.turn_on
+                data: {}
+                target: !input 'automation'
+          default:
+          - service: automation.turn_off
+            data: {}
+            target: !input 'automation'
+      - conditions:
+          - condition: state
+            entity_id: !input 'person'
+            state: not_home
+        sequence:
+        - choose:
+          - conditions: '{{ inverted }}'
+            sequence:
+              - service: automation.turn_off
+                data: {}
+                target: !input 'automation'
+          default:
+          - service: automation.turn_on
+            data: {}
+            target: !input 'automation'
+    default: []

@@ -1,0 +1,42 @@
+blueprint:
+  name: 区域变动通知
+  description: 当家庭成员离开某一区域时发送通知
+  domain: automation
+  input:
+    person_entity:
+      name: 家庭成员
+      selector:
+        entity:
+          domain: person
+    zone_entity:
+      name: 区域
+      selector:
+        entity:
+          domain: zone
+    notify_device:
+      name: 接受通知设备
+      description: 该设备用于接受通知，需要已经安装HASS官方应用
+      selector:
+        device:
+          integration: mobile_app
+
+trigger:
+  platform: state
+  entity_id: !input person_entity
+
+variables:
+  zone_entity: !input zone_entity
+  # This is the state of the person when it's in this zone.
+  zone_state: "{{ states[zone_entity].name }}"
+  person_entity: !input person_entity
+  person_name: "{{ states[person_entity].name }}"
+
+condition:
+  condition: template
+  value_template: "{{ trigger.from_state.state == zone_state and trigger.to_state.state != zone_state }}"
+
+action:
+  domain: mobile_app
+  type: notify
+  device_id: !input notify_device
+  message: "{{ person_name }} 已经离开 {{ zone_state }}"

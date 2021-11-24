@@ -1,0 +1,43 @@
+blueprint:
+  name: 开启警戒模式
+  description: 最后一个家庭成员离开后开启警戒模式
+  domain: automation
+  input:
+    trigger_person:
+      name: 家庭成员
+      description: 需要监测的家庭成员（当选中的家庭成员中最后一个人离开家后即开启警戒模式）
+      selector:
+        target:
+          entity:
+            domain: person
+    guard_entity:
+      name: 警戒状态
+      description: 选择需要调整的警戒状态
+      selector:
+        entity:
+          domain: input_boolean
+      default: ""
+      
+mode: single
+max_exceeded: silent
+
+trigger:
+  platform: state
+  entity_id: !input trigger_person
+  from: "home"
+  to: "not_home"
+
+condition:
+  condition: state
+  entity_id: !input guard_entity
+  state: "off"
+
+# action:
+#   - choose:
+#     - conditions: "{{ guard_model }}"
+#       sequence:
+#         - service: switch.turn_on
+#           target: !input light_target
+action: 
+  - service: input_boolean.turn_on
+    target: !input guard_entity

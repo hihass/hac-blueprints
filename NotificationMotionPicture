@@ -1,0 +1,91 @@
+blueprint:
+  name: 检测到有人时发送画面通知
+  description: >
+    当检测到有人运动时，向手机推送一条带有摄像头截图的通知。
+  domain: automation
+  input:
+    motion_sensor:
+      name: 动作传感器
+      description: 此传感器用于检测是否有运动发生。
+      selector:
+          entity:
+            domain: binary_sensor
+            device_class: motion
+
+    camera:
+      name: 摄像头
+      description: 此摄像头用于截取动作发生地的图片。
+      selector:
+        entity:
+          domain: camera
+
+    notify_device:
+      name: 接受通知设备
+      description: 选择接收通知的设备，此设备需要已经安装HASS APP,并开启允许通知。
+      selector:
+        device:
+          integration: mobile_app
+
+    is_ios:
+      name: 是苹果设备吗?
+      description: 接受通知的设备是不是苹果设备？默认为安卓。
+      selector:
+        boolean:
+      default: false
+
+    notification_title:
+      name: 通知主题(可选)
+      description: '默认: "检测到运动!"'
+      default: "检测到有物体运动!"
+
+    notification_message:
+      name: 通知内容 (可选)
+      description: '默认: "{{ 传感器名称 }} 检测到运动!"'
+      default: "{{ motion_sensor_name }} 检测到有物体运动!"
+      
+    delay:
+      name: 延迟时间 (可选)
+      description: 创建截图前延迟的时间，会在该时间后开始创建截图（避免只是临时经过的物体）
+      default: ""
+      selector:
+        number:
+            min: 0
+            max: 60
+            unit_of_measurement: seconds
+            mode: slider
+
+trigger:
+  platform: state
+  entity_id: !input motion_sensor
+  from: "off"
+  to: "on"
+
+variables:
+  motion_sensor: !input motion_sensor
+  motion_sensor_name: "{{ states[motion_sensor].name }}"
+  camera: !input camera
+  notify_device: !input notify_device
+  is_ios: !input is_ios
+  notification_title: !input notification_title
+  notification_message: !input notification_message
+  delay: !input delay
+  snapshot_create_file_path: "/config/www/tmp/snapshot_{{ states[camera].object_id }}.jpg"
+  snapshot_access_file_path: "{{ snapshot_create_file_path | replace('/config/www','/local') }}"
+
+action:
+  - delay: "{{ delay }}"
+
+  - service: camera.snapshot
+    entity_id: !input camera
+    data:
+      filename: "{{ snapshot_create_file_path }}"
+
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "{{ notification_title }}"
+    message: "{{ notification_message }}"
+    data: >
+      {% set android_data = {"image": "%s"} | format(snapshot_access_file_path) %}
+      {% set ios_data = {"attachment": {"url": "%s", "content_type": "JPEG"}} | format(snapshot_access_file_path) %}
+      {{ ios_data if is_ios else android_data }}

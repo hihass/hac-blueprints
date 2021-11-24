@@ -1,0 +1,47 @@
+blueprint:
+  name: 每日自动创建快照
+  description: 每天定时创建完整的快照.
+  domain: automation
+  input:
+    trigger_time:
+      name: 快照创建时间
+      description: 快照的创建时间，每天进行一次
+      selector:
+        time: {}
+    send_notification:
+      name: 发送通知
+      description: 是否向设备推送通知
+      selector:
+        boolean: {}
+      default: false
+    notify_device:
+      name: 接收通知设备
+      description: 接收通知的设备需要已经安装Home Assistant APP并已经登录
+      selector:
+        device:
+          integration: mobile_app
+      default: ''
+  source_url: https://github.com/ai-xcode/HASS-Blueprints/blob/main/AutomatedDailySnapshot
+mode: single
+max_exceeded: silent
+variables:
+  backup_filename: Automated backup {{ now().strftime('%F') }}
+  send_notification: !input 'send_notification'
+  notify_device: !input 'notify_device'
+  notification_title: Automated Daily Backup
+  notification_message: Home Assistant 完整快照已经创建. {{ now().strftime('%F') }}
+trigger:
+- platform: time
+  at: !input 'trigger_time'
+action:
+- service: hassio.snapshot_full
+  data:
+    name: '{{ backup_filename }}'
+- choose:
+  - conditions: '{{ send_notification }}'
+    sequence:
+    - device_id: !input 'notify_device'
+      domain: mobile_app
+      type: notify
+      title: '{{ notification_title }}'
+      message: '{{ notification_message }}'

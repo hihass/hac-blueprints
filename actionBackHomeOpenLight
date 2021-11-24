@@ -1,0 +1,56 @@
+blueprint:
+  name: 天黑有人回家时打开灯
+  description: 天黑之后有人回家自动打开客厅灯（不调整其他房间的灯光）
+  domain: automation
+  input:
+    trigger_device:
+      name: 门窗传感器
+      description: 选择入户门的传感器，当该该传感器打开时判定为有人进入家中
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: door
+    guard_model:
+      name: 警戒模式
+      description: 警戒模式开启时是否自动开灯
+      selector:
+        boolean: {}
+      default: false
+    guard_entity:
+      name: 警戒状态
+      description: 选择需要判断的警戒状态
+      selector:
+        entity:
+          domain: input_boolean
+      default: ""
+    light_target:
+      name: 灯
+      description: 选择需要打开的灯
+      selector:
+        target:
+          entity:
+            domain: switch
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  platform: state
+  entity_id: !input trigger_device
+  from: "off"
+  to: "on"
+
+condition:
+  condition: state
+  entity_id: !input guard_entity
+  state: "off"
+
+# action:
+#   - choose:
+#     - conditions: "{{ guard_model }}"
+#       sequence:
+#         - service: switch.turn_on
+#           target: !input light_target
+action: 
+  - service: switch.turn_on
+    target: !input light_target

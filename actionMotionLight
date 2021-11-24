@@ -1,0 +1,49 @@
+blueprint:
+  name: 根据移动开关灯
+  description: 当检测到人移动时打开灯
+  domain: automation
+  input:
+    motion_entity:
+      name: 动作传感器
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+    light_target:
+      name: 灯
+      selector:
+        target:
+          entity:
+            domain: light
+    no_motion_wait:
+      name: 等待时间
+      description: 最后一次检测到动作后保持灯亮的时间
+      default: 120
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+
+# If motion is detected within the delay,
+# we restart the script.
+mode: restart
+max_exceeded: silent
+
+trigger:
+  platform: state
+  entity_id: !input motion_entity
+  from: "off"
+  to: "on"
+
+action:
+  - service: light.turn_on
+    target: !input light_target
+  - wait_for_trigger:
+      platform: state
+      entity_id: !input motion_entity
+      from: "on"
+      to: "off"
+  - delay: !input no_motion_wait
+  - service: light.turn_off
+    target: !input light_target

@@ -1,0 +1,36 @@
+blueprint:
+  name: 自动开启夜间主题
+  description: 太阳落山后自动开启选定的夜间主题
+  domain: automation
+  input:
+    night_theme:
+      name: 夜间主题
+      description: 选择需要开启的夜间主题
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: door
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  platform: state
+  entity_id: !input trigger_device
+  from: "off"
+  to: "on"
+
+condition:
+  condition: state
+  entity_id: !input guard_entity
+  state: "off"
+
+# action:
+#   - choose:
+#     - conditions: "{{ guard_model }}"
+#       sequence:
+#         - service: switch.turn_on
+#           target: !input light_target
+action: 
+  - service: switch.turn_on
+    target: !input light_target
